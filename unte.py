@@ -44,6 +44,7 @@ PROG_TAG = re.compile('.*UT([!|\[\]\(\){}>=])\s(.*)$')
 def find_files_glob(result, pathname):
     # UT= assert type(result) == list
     # UT= assert type(pathname) == str
+    # UT= print('find_files_glob(%s, %s)' % (result, pathname))
 
     for path in glob.glob(pathname):
         if os.path.isfile(path):
@@ -267,16 +268,16 @@ def write_part_file_one(dst, src, start, end, head):
 
 
 def write_part_file(dst, tags, tag_path, tag_name, tag_type):
-    for tag_master in tags:
-        if tag_master['path'] == tag_path:
-            definition = tag_master['tags']['definition']
-            tag_child = definition.get(tag_name)
-            if tag_child:
-                start = tag_child['start']
-                end = tag_child['end']
-                if tag_type == 'head' and len(tag_child['head']) > 0:
-                    end = max(tag_child['head']) + 1
-                write_part_file_one(dst, tag_path, start, end, tag_child['head'])
+    if not tag_path in tags:
+        return
+    definition = tags[tag_path]['definition']
+    tag_child = definition.get(tag_name)
+    if tag_child:
+        start = tag_child['start']
+        end = tag_child['end']
+        if tag_type == 'head' and len(tag_child['head']) > 0:
+            end = max(tag_child['head']) + 1
+        write_part_file_one(dst, tag_path, start, end, tag_child['head'])
 
 
 def enumerate_tags(tags):
@@ -310,10 +311,10 @@ def compile_file(dst, src, tags_master, tags_db):
 
 
 def update_file(path, tags):
-    tags_db = [
-        {'path': tag['file'], 'tags': extract_tags(tag['file'])}
+    tags_db = dict([
+        [tag['file'], extract_tags(tag['file'])]
         for tag in tags['insert']
-    ]
+    ])
 
     temp_dst = tempfile.TemporaryFile(mode='w+')
     compile_file(temp_dst, path, tags, tags_db)
@@ -360,14 +361,17 @@ def execute_file(path, tags):
 
         try:
             out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-            output += out
-            if exe['check']:
-                check.append(out)
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             print('\n%s:1:error:%s\n' % (path, e))
+            output += e.output
+            if exe['check']:
+                check += e.output.splitlines(True)
             print(output)
             result = False
             break
+        output += out
+        if exe['check']:
+            check += out.splitlines(True)
 
     os.chdir(cwd)
     shutil.rmtree(tempdir)
