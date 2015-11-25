@@ -1,0 +1,21 @@
+#!/bin/sh
+
+flake8_version=`flake8 --version`
+flake8_pep8=`flake8 --version | grep pep8`
+flake8_mccabe=`flake8 --version | grep mccabe`
+flake8_naming=`flake8 --version | grep naming`
+
+if [ "$flake8_version" = "" ] ; then
+    echo "ERROR: flake8 should be installed"
+fi
+if [ "$flake8_pep8" = "" ] ; then
+    echo "ERROR: pep8 for flake8 should be installed"
+fi
+if [ "$flake8_mccabe" = "" ] ; then
+    echo "ERROR: mccabe for flake8 should be installed"
+fi
+if [ "$flake8_naming" = "" ] ; then
+    echo "ERROR: pep8-naming should be installed"
+fi
+
+find *.py tests -name '*.py' | xargs flake8 --max-complexity=10

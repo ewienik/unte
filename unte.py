@@ -40,6 +40,7 @@ import traceback
 
 PROG_TAG = re.compile('.*UT([!|\[\]\(\){}>=])\s(.*)$')
 
+
 # UT{ find_files_glob
 def find_files_glob(result, pathname):
     # UT= assert type(result) == list
@@ -95,7 +96,7 @@ def tag_parser_definition_start(tags, value, line_no, path_dir):
         return "There is no a tag name."
     if name in tags['definition']:
         return "Duplicate start of tag '%s' (previous at %d)" % (
-            name, tags['definition'][tag]['start']
+            name, tags['definition'][name]['start']
         )
     tag = {
         'start': line_no,
@@ -268,7 +269,7 @@ def write_part_file_one(dst, src, start, end, head):
 
 
 def write_part_file(dst, tags, tag_path, tag_name, tag_type):
-    if not tag_path in tags:
+    if tag_path not in tags:
         return
     definition = tags[tag_path]['definition']
     tag_child = definition.get(tag_name)
@@ -307,7 +308,9 @@ def compile_file(dst, src, tags_master, tags_db):
         dst.write(line)
         if tag is not None and tag['start'] == line_no:
             inside_tag = True
-            write_part_file(dst, tags_db, tag['file'], tag['name'], tag['type'])
+            write_part_file(
+                dst, tags_db, tag['file'], tag['name'], tag['type']
+            )
 
 
 def update_file(path, tags):
@@ -325,7 +328,9 @@ def update_file(path, tags):
 def diff_file(path, tags, output):
     ok = True
     diff = []
-    for line in difflib.context_diff(tags['expected'], output, fromfile='EXPECTED', tofile='OUTPUT'):
+    for line in difflib.context_diff(
+        tags['expected'], output, fromfile='EXPECTED', tofile='OUTPUT',
+    ):
         ok = False
         diff.append(line)
 
@@ -355,12 +360,16 @@ def execute_file(path, tags):
         try:
             cmd = exe['cmd'].format(**env)
         except KeyError as e:
-            print('\n%s:1:error:Unknown key "%s" in "%s"' % (path, e, exe['cmd']))
+            print('\n%s:1:error:Unknown key "%s" in "%s"' % (
+                path, e, exe['cmd']
+            ))
             result = False
             break
 
         try:
-            out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+            out = subprocess.check_output(
+                cmd, stderr=subprocess.STDOUT, shell=True
+            )
         except subprocess.CalledProcessError as e:
             print('\n%s:1:error:%s\n' % (path, e))
             output += e.output
@@ -389,7 +398,7 @@ def parse_args():
 # UT{ print_summary
 def print_summary(counters):
     # UT= assert type(counters) == dict
-    # UT= assert 'for_processing' in counters and type(counters['for_processing']) == int
+    # UT= assert 'for_processing' in counters and type(counters['for_processing']) == int  # noqa
     # UT= assert 'processed' in counters and type(counters['processed']) == int
     # UT= assert 'passed' in counters and type(counters['passed']) == int
     # UT= assert 'failed' in counters and type(counters['failed']) == int
@@ -406,7 +415,7 @@ def print_summary(counters):
 def process_file(path, counters):
     # UT= assert type(path) == str
     # UT= assert type(counters) == dict
-    # UT= assert 'for_processing' in counters and type(counters['for_processing']) == int
+    # UT= assert 'for_processing' in counters and type(counters['for_processing']) == int  # noqa
     # UT= assert 'processed' in counters and type(counters['processed']) == int
     # UT= assert 'passed' in counters and type(counters['passed']) == int
     # UT= assert 'failed' in counters and type(counters['failed']) == int
@@ -455,11 +464,10 @@ def main():
         if not process_file(path, counters):
             result = 1
 
-    print_summary(counters);
+    print_summary(counters)
     sys.exit(result)
 # UT}
 
 
 if __name__ == '__main__':
     main()
-

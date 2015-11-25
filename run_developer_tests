@@ -1,0 +1,4 @@
+#!/bin/sh
+
+./unte.py tests/*-ut-*.py
+./check_style
