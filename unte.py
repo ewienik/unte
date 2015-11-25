@@ -41,6 +41,26 @@ import traceback
 PROG_TAG = re.compile('.*UT([!|\[\]\(\){}>=])\s(.*)$')
 
 
+# UT{ find_files
+def find_files(globs):
+    # UT= assert '__iter__' in dir(globs)
+    # UT= print('find_files(...)')
+
+    result = []
+
+    for pathname in globs:
+        path_dir, sep, path_file = pathname.partition('**')
+        if len(sep) == 0:
+            find_files_glob(result, pathname)
+            continue
+
+        if len(path_dir) == 0 or os.path.isdir(path_dir):
+            find_files_walk(result, path_dir, path_file)
+
+    return result
+# UT}
+
+
 # UT{ find_files_glob
 def find_files_glob(result, pathname):
     # UT= assert type(result) == list
@@ -54,27 +74,19 @@ def find_files_glob(result, pathname):
 # UT}
 
 
+# UT{ find_files_walk
 def find_files_walk(result, path_dir, path_file):
+    # UT= assert type(result) == list
+    # UT= assert type(path_dir) == str
+    # UT= assert type(path_file) == str
+    # UT= print('find_files_walk(%s, %s, %s)' % (result, path_dir, path_file))
+
     pattern = os.path.basename(path_file)
     for root, dirs, files in os.walk(path_dir):
-        for file in files:
-            if fnmatch.fnmatch(file, pattern):
-                result.append(os.path.join(root, file))
-
-
-def find_files(globs):
-    result = []
-
-    for pathname in globs:
-        path_dir, sep, path_file = pathname.partition('**')
-        if len(sep) == 0:
-            find_files_glob(result, pathname)
-            continue
-
-    if len(path_dir) == 0 or os.path.isdir(path_dir):
-        find_files_walk(result, path_dir, path_file)
-
-    return result
+        for f in files:
+            if fnmatch.fnmatch(f, pattern):
+                result.append(os.path.join(root, f))
+# UT}
 
 
 def tag_get(line):
