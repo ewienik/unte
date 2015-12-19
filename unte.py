@@ -38,14 +38,11 @@ import sys
 import tempfile
 import traceback
 
-PROG_TAG = re.compile('.*UT([!|\[\]\(\){}>=])\s(.*)$')
+PROG_TAG = re.compile('.*UT([!|\[\]{}>])\s(.*)$')
 
 
 # UT{ find_files
 def find_files(globs):
-    # UT= assert '__iter__' in dir(globs)
-    # UT= print('find_files(...)')
-
     result = []
 
     for pathname in globs:
@@ -63,10 +60,6 @@ def find_files(globs):
 
 # UT{ find_files_glob
 def find_files_glob(result, pathname):
-    # UT= assert type(result) == list
-    # UT= assert type(pathname) == str
-    # UT= print('find_files_glob(%s, %s)' % (result, pathname))
-
     for path in glob.glob(pathname):
         if os.path.isfile(path):
             result.append(path)
@@ -76,11 +69,6 @@ def find_files_glob(result, pathname):
 
 # UT{ find_files_walk
 def find_files_walk(result, path_dir, path_file):
-    # UT= assert type(result) == list
-    # UT= assert type(path_dir) == str
-    # UT= assert type(path_file) == str
-    # UT= print('find_files_walk(%s, %s, %s)' % (result, path_dir, path_file))
-
     pattern = os.path.basename(path_file)
     for root, dirs, files in os.walk(path_dir):
         for f in files:
@@ -110,11 +98,7 @@ def tag_parser_definition_start(tags, value, line_no, path_dir):
         return "Duplicate start of tag '%s' (previous at %d)" % (
             name, tags['definition'][name]['start']
         )
-    tag = {
-        'start': line_no,
-        'end': None,
-        'head': {},
-    }
+    tag = {'start': line_no, 'end': None}
     tags['definition'][name] = tag
     tags['current']['definition'].append(tag)
 
@@ -146,13 +130,7 @@ def tag_parser_expected(tags, value, line_no, path_dir):
     tags['expected'].append(value + '\n')
 
 
-def tag_parser_head(tags, value, line_no, path_dir):
-    stack = tags['current']['definition']
-    if len(stack) > 0:
-        stack[-1]['head'][line_no] = value
-
-
-def tag_parser_insert_start(tags, value, line_no, path_dir, insert_type):
+def tag_parser_insert_start(tags, value, line_no, path_dir):
     outer = tags['current']['insert']
     if outer:
         return "Tag inside other (outer defined in line %d)." % outer['start']
@@ -168,7 +146,6 @@ def tag_parser_insert_start(tags, value, line_no, path_dir, insert_type):
         return "Tag name arg is empty."
 
     tag = {
-        'type': insert_type,
         'name': name,
         'file': os.path.join(path_dir, path),
         'start': line_no,
@@ -178,45 +155,24 @@ def tag_parser_insert_start(tags, value, line_no, path_dir, insert_type):
     tags['current']['insert'] = tag
 
 
-def tag_parser_insert_end(tags, value, line_no, insert_type):
+def tag_parser_insert_end(tags, value, line_no, path_dir):
     if len(value.strip()) != 0:
         return "Wrong args for tag. There should be no args."
     tag = tags['current']['insert']
     if not tag:
         return "End tag without starting tag"
-    if tag['type'] != insert_type:
-        return "Wrong end tag type (start at line %d)" % tag['start']
     tag['end'] = line_no
     tags['current']['insert'] = None
-
-
-def tag_parser_insert_full_start(tags, value, line_no, path_dir):
-    tag_parser_insert_start(tags, value, line_no, path_dir, 'full')
-
-
-def tag_parser_insert_full_end(tags, value, line_no, path_dir):
-    tag_parser_insert_end(tags, value, line_no, 'full')
-
-
-def tag_parser_insert_head_start(tags, value, line_no, path_dir):
-    tag_parser_insert_start(tags, value, line_no, path_dir, 'head')
-
-
-def tag_parser_insert_head_end(tags, value, line_no, path_dir):
-    tag_parser_insert_end(tags, value, line_no, 'head')
 
 
 TAG_PARSERS = {
     '{': tag_parser_definition_start,
     '}': tag_parser_definition_end,
-    '[': tag_parser_insert_full_start,
-    ']': tag_parser_insert_full_end,
-    '(': tag_parser_insert_head_start,
-    ')': tag_parser_insert_head_end,
+    '[': tag_parser_insert_start,
+    ']': tag_parser_insert_end,
     '!': tag_parser_exec_ignore,
     '|': tag_parser_exec_check,
     '>': tag_parser_expected,
-    '=': tag_parser_head,
 }
 
 
@@ -255,7 +211,7 @@ def extract_tags(path):
     return tags
 
 
-def write_part_file_one(dst, src, start, end, head):
+def write_part_file_one(dst, src, start, end):
     f = open(src)
     line_no = 0
     state = 'normal'
@@ -264,33 +220,22 @@ def write_part_file_one(dst, src, start, end, head):
         if state == 'inside':
             if end == line_no:
                 return
-            if line_no in head:
-                pre = ''
-                for c in line:
-                    if not c.isspace():
-                        break
-                    pre += c
-                dst.write(pre)
-                dst.write(head[line_no])
-                dst.write('\n')
-                continue
             dst.write(line)
             continue
         if start == line_no:
             state = 'inside'
 
 
-def write_part_file(dst, tags, tag_path, tag_name, tag_type):
+def write_part_file(dst, tags, tag_path, tag_name):
     if tag_path not in tags:
         return
     definition = tags[tag_path]['definition']
     tag_child = definition.get(tag_name)
     if tag_child:
-        start = tag_child['start']
-        end = tag_child['end']
-        if tag_type == 'head' and len(tag_child['head']) > 0:
-            end = max(tag_child['head']) + 1
-        write_part_file_one(dst, tag_path, start, end, tag_child['head'])
+        write_part_file_one(
+            dst, tag_path,
+            tag_child['start'], tag_child['end']
+        )
 
 
 def enumerate_tags(tags):
@@ -320,9 +265,7 @@ def compile_file(dst, src, tags_master, tags_db):
         dst.write(line)
         if tag is not None and tag['start'] == line_no:
             inside_tag = True
-            write_part_file(
-                dst, tags_db, tag['file'], tag['name'], tag['type']
-            )
+            write_part_file(dst, tags_db, tag['file'], tag['name'])
 
 
 def update_file(path, tags):
@@ -409,12 +352,6 @@ def parse_args():
 
 # UT{ print_summary
 def print_summary(counters):
-    # UT= assert type(counters) == dict
-    # UT= assert 'for_processing' in counters and type(counters['for_processing']) == int  # noqa
-    # UT= assert 'processed' in counters and type(counters['processed']) == int
-    # UT= assert 'passed' in counters and type(counters['passed']) == int
-    # UT= assert 'failed' in counters and type(counters['failed']) == int
-
     print("\nSummary:")
     print("\tfiles for processing: %d" % counters['for_processing'])
     print("\tprocessed: %d" % counters['processed'])
@@ -425,13 +362,6 @@ def print_summary(counters):
 
 # UT{ process_file
 def process_file(path, counters):
-    # UT= assert type(path) == str
-    # UT= assert type(counters) == dict
-    # UT= assert 'for_processing' in counters and type(counters['for_processing']) == int  # noqa
-    # UT= assert 'processed' in counters and type(counters['processed']) == int
-    # UT= assert 'passed' in counters and type(counters['passed']) == int
-    # UT= assert 'failed' in counters and type(counters['failed']) == int
-
     ok = True
     counters['processed'] += 1
     print('\rProcessing %d/%d file ... ' % (
