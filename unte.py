@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 from __future__ import print_function
 
@@ -77,19 +77,24 @@ def find_files_walk(result, path_dir, path_file):
 # UT}
 
 
+# UT{ tag_get
 def tag_get(line):
     match = PROG_TAG.match(line)
     if match is not None:
         return match.group(1), match.group(2)
     return None, None
+# UT}
 
 
+# UT{ tag_parse
 def tag_parse(tags, tag_type, tag_value, line_no, path_dir):
     if tag_type not in TAG_PARSERS:
         return "Unknown tag type '%s'" % tag_type
     return TAG_PARSERS[tag_type](tags, tag_value, line_no, path_dir)
+# UT}
 
 
+# UT{ tag_parser_definition_start
 def tag_parser_definition_start(tags, value, line_no, path_dir):
     name = value.strip()
     if len(name) == 0:
@@ -101,8 +106,10 @@ def tag_parser_definition_start(tags, value, line_no, path_dir):
     tag = {'start': line_no, 'end': None}
     tags['definition'][name] = tag
     tags['current']['definition'].append(tag)
+# UT}
 
 
+# UT{ tag_parser_definition_end
 def tag_parser_definition_end(tags, value, line_no, path_dir):
     if len(value.strip()) != 0:
         return "Wrong args for tag. There should be no args."
@@ -110,26 +117,34 @@ def tag_parser_definition_end(tags, value, line_no, path_dir):
     if len(stack) == 0:
         return "End tag without starting tag"
     stack.pop()['end'] = line_no
+# UT}
 
 
+# UT{ tag_parser_exec_check
 def tag_parser_exec_check(tags, value, line_no, path_dir):
     cmd = value.strip()
     if len(cmd) == 0:
         return "Should be a command."
     tags['exec'].append({'check': True, 'cmd': cmd})
+# UT}
 
 
+# UT{ tag_parser_exec_ignore
 def tag_parser_exec_ignore(tags, value, line_no, path_dir):
     cmd = value.strip()
     if len(cmd) == 0:
         return "Should be a command."
     tags['exec'].append({'check': False, 'cmd': cmd})
+# UT}
 
 
+# UT{ tag_parser_expected
 def tag_parser_expected(tags, value, line_no, path_dir):
     tags['expected'].append(value + '\n')
+# UT}
 
 
+# UT{ tag_parser_insert_start
 def tag_parser_insert_start(tags, value, line_no, path_dir):
     outer = tags['current']['insert']
     if outer:
@@ -153,8 +168,10 @@ def tag_parser_insert_start(tags, value, line_no, path_dir):
     }
     tags['insert'].append(tag)
     tags['current']['insert'] = tag
+# UT}
 
 
+# UT{ tag_parser_insert_end
 def tag_parser_insert_end(tags, value, line_no, path_dir):
     if len(value.strip()) != 0:
         return "Wrong args for tag. There should be no args."
@@ -163,8 +180,10 @@ def tag_parser_insert_end(tags, value, line_no, path_dir):
         return "End tag without starting tag"
     tag['end'] = line_no
     tags['current']['insert'] = None
+# UT}
 
 
+# UT{ tag_parsers
 TAG_PARSERS = {
     '{': tag_parser_definition_start,
     '}': tag_parser_definition_end,
@@ -174,8 +193,10 @@ TAG_PARSERS = {
     '|': tag_parser_exec_check,
     '>': tag_parser_expected,
 }
+# UT}
 
 
+# UT{ extract_tags
 def extract_tags(path):
     tags = {
         'current': {
@@ -209,8 +230,10 @@ def extract_tags(path):
         sys.exit(1)
 
     return tags
+# UT}
 
 
+# UT{ write_part_file_one
 def write_part_file_one(dst, src, start, end):
     f = open(src)
     line_no = 0
@@ -224,8 +247,10 @@ def write_part_file_one(dst, src, start, end):
             continue
         if start == line_no:
             state = 'inside'
+# UT}
 
 
+# UT{ write_part_file
 def write_part_file(dst, tags, tag_path, tag_name):
     if tag_path not in tags:
         return
@@ -236,13 +261,17 @@ def write_part_file(dst, tags, tag_path, tag_name):
             dst, tag_path,
             tag_child['start'], tag_child['end']
         )
+# UT}
 
 
+# UT{ enumerate_tags
 def enumerate_tags(tags):
     for tag in tags['insert']:
         yield tag
+# UT}
 
 
+# UT{ compile_file
 def compile_file(dst, src, tags_master, tags_db):
     f = open(src)
     tag_iter = iter(enumerate_tags(tags_master))
@@ -266,8 +295,10 @@ def compile_file(dst, src, tags_master, tags_db):
         if tag is not None and tag['start'] == line_no:
             inside_tag = True
             write_part_file(dst, tags_db, tag['file'], tag['name'])
+# UT}
 
 
+# UT{ update_file
 def update_file(path, tags):
     tags_db = dict([
         [tag['file'], extract_tags(tag['file'])]
@@ -278,8 +309,10 @@ def update_file(path, tags):
     compile_file(temp_dst, path, tags, tags_db)
     temp_dst.seek(0)
     shutil.copyfileobj(temp_dst, open(path, 'w'))
+# UT}
 
 
+# UT{ diff_file
 def diff_file(path, tags, output):
     ok = True
     diff = []
@@ -290,18 +323,36 @@ def diff_file(path, tags, output):
         diff.append(line)
 
     if not ok:
-        print('\n%s:1:error:There is unexpected ouput' % path)
+        print('\n%s:1:error:There is unexpected output' % path)
         for line in diff:
             sys.stdout.write(line)
         return False
 
     return True
+# UT}
 
 
+# UT{ escape_lines
+def escape_lines(lines):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if len(line) == 0:
+            i += 1
+            continue
+        if line[-1] == '\n':
+            line = line[:-1]
+        line = repr(line)[1:-1] + '\n'
+        lines[i] = line
+        i += 1
+# UT}
+
+
+# UT{ execute_file
 def execute_file(path, tags):
     if len(tags['exec']) == 0:
         print('\n%s:1:error:There are no execute tags' % path)
-        return False
+        return False, []
     env = dict(os.environ)
     tempdir = tempfile.mkdtemp()
     cwd = os.getcwd()
@@ -341,12 +392,14 @@ def execute_file(path, tags):
     shutil.rmtree(tempdir)
 
     return result, check
+# UT}
 
 
 # UT{ parse_args
 def parse_args():
     parser = argparse.ArgumentParser(description='Process unit tests')
-    parser.add_argument()
+    parser.add_argument('paths', nargs='+')
+    return parser.parse_args()
 # UT}
 
 
@@ -372,8 +425,12 @@ def process_file(path, counters):
         tags = extract_tags(path)
         update_file(path, tags)
         status, output = execute_file(path, tags)
-        if not status or not diff_file(path, tags, output):
+        if not status:
             ok = False
+        else:
+            escape_lines(output)
+            if not diff_file(path, tags, output):
+                ok = False
     except:
         ok = False
         traceback.print_exc()
@@ -389,11 +446,9 @@ def process_file(path, counters):
 
 # UT{ main
 def main():
-    if len(sys.argv) < 2:
-        print('Error: there should be arguments')
-        sys.exit(1)
+    args = parse_args()
+    paths = find_files(args.paths)
 
-    paths = find_files(sys.argv[1:])
     counters = {
         'for_processing': len(paths),
         'processed': 0,
