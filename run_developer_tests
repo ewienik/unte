@@ -1,4 +1,4 @@
 #!/bin/sh
 
-./unte.py tests/*-ut-*.py
+./unte.py 'tests/*-ut-*' 'samples/**/*-ut-*'
 ./check_style

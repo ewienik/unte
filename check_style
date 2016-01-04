@@ -18,4 +18,4 @@ if [ "$flake8_naming" = "" ] ; then
     echo "ERROR: pep8-naming should be installed"
 fi
 
-find *.py tests -name '*.py' | xargs flake8 --max-complexity=10
+find *.py tests samples -name '*.py' | xargs flake8 --max-complexity=10
