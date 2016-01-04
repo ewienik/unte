@@ -8,7 +8,7 @@ interpreter or compile it before; test will be run in temporary directory).
 Your test will produce stdout or stderr which will be diffied with expected
 output and the result of diff will be a result of test.
 
-# Command line options
+# Usage
 
 Run simple `unte.py paths...` where paths could be a direct paths of tests or
 glob paths (you can use `*` or `**` globs)
