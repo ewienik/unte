@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 from __future__ import print_function
 
@@ -140,7 +140,10 @@ def tag_parser_exec_ignore(tags, value, line_no, path_dir):
 
 # UT{ tag_parser_expected
 def tag_parser_expected(tags, value, line_no, path_dir):
-    tags['expected'].append(value + '\n')
+    line = value + '\n'
+    if sys.version_info < (3, 0):
+        line = unicode(line)
+    tags['expected'].append(line)
 # UT}
 
 
@@ -335,6 +338,7 @@ def diff_file(path, tags, output):
 # UT{ escape_lines
 def escape_lines(lines):
     i = 0
+    start = 2 if sys.version_info < (3, 0) else 1
     while i < len(lines):
         line = lines[i]
         if len(line) == 0:
@@ -342,7 +346,7 @@ def escape_lines(lines):
             continue
         if line[-1] == '\n':
             line = line[:-1]
-        line = repr(line)[1:-1] + '\n'
+        line = repr(line)[start:-1] + '\n'
         lines[i] = line
         i += 1
 # UT}
@@ -359,7 +363,7 @@ def execute_file(path, tags):
     os.chdir(tempdir)
 
     result = True
-    output = ''
+    output = u''
     check = []
     for exe in tags['exec']:
         env['src_file'] = os.path.join(cwd, path)
@@ -378,15 +382,17 @@ def execute_file(path, tags):
             )
         except subprocess.CalledProcessError as e:
             print('\n%s:1:error:%s\n' % (path, e))
-            output += e.output
+            decoded = e.output.decode('utf-8')
+            output += decoded
             if exe['check']:
-                check += e.output.splitlines(True)
+                check += decoded.splitlines(True)
             print(output)
             result = False
             break
-        output += out
+        decoded = out.decode('utf-8')
+        output += decoded
         if exe['check']:
-            check += out.splitlines(True)
+            check += decoded.splitlines(True)
 
     os.chdir(cwd)
     shutil.rmtree(tempdir)

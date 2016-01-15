@@ -14,7 +14,7 @@ def execute_file(path, tags):
     os.chdir(tempdir)
 
     result = True
-    output = ''
+    output = u''
     check = []
     for exe in tags['exec']:
         env['src_file'] = os.path.join(cwd, path)
@@ -33,15 +33,17 @@ def execute_file(path, tags):
             )
         except subprocess.CalledProcessError as e:
             print('\n%s:1:error:%s\n' % (path, e))
-            output += e.output
+            decoded = e.output.decode('utf-8')
+            output += decoded
             if exe['check']:
-                check += e.output.splitlines(True)
+                check += decoded.splitlines(True)
             print(output)
             result = False
             break
-        output += out
+        decoded = out.decode('utf-8')
+        output += decoded
         if exe['check']:
-            check += out.splitlines(True)
+            check += decoded.splitlines(True)
 
     os.chdir(cwd)
     shutil.rmtree(tempdir)
@@ -164,7 +166,7 @@ if __name__ == "__main__":
 # UT> call error
 # UT> os.chdir(cwd)
 # UT> shutil.rmtree(tempdir)
-# UT> result: False ['call error']
+# UT> result: False [u'call error']
 # UT> tempfile.mkdtemp(): tempdir
 # UT> os.getcwd(): cwd
 # UT> os.chdir(tempdir)
@@ -180,4 +182,4 @@ if __name__ == "__main__":
 # noqa UT> subprocess.check_output(cwd.path, {'shell': True, 'stderr': 'stdout'}): output.cwd.path
 # UT> os.chdir(cwd)
 # UT> shutil.rmtree(tempdir)
-# UT> result: True ['output.cwd.path']
+# UT> result: True [u'output.cwd.path']

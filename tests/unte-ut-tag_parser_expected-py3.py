@@ -1,12 +1,19 @@
-# UT| python2 {src_file}
+# UT| python3 {src_file}
 
 from __future__ import print_function
 
 
 # UT[ ../unte.py * tag_parser_expected
 def tag_parser_expected(tags, value, line_no, path_dir):
-    tags['expected'].append(value + '\n')
+    line = value + '\n'
+    if sys.version_info < (3, 0):
+        line = unicode(line)
+    tags['expected'].append(line)
 # UT]
+
+
+class sys:  # noqa
+    version_info = (3, 0)
 
 
 if __name__ == "__main__":
